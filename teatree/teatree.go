@@ -265,8 +265,8 @@ func (ti *TreeItem) ViewScrolled(viewtop, curline, bottomline int) (int, string)
 
 	curline += 1
 
-	if curline > bottomline {
-		return curline, ""
+	if curline == bottomline {
+		return curline, s
 	}
 
 	if len(ti.Children) > 0 && ti.Open {
