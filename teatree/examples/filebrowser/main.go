@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -22,6 +23,7 @@ const GoTitle = "\U000F07D3"
 
 type FileBrowserModel struct {
 	dir      string
+	result   string
 	Tree     *teatree.Tree
 	info     func()
 	quitting bool
@@ -43,6 +45,11 @@ func (fm *FileBrowserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch tmsg.String() {
+		case "enter":
+			fm.result = path.Join(append([]string{fm.dir}, fm.Tree.ActiveItem.GetPath()...)...)
+			fm.quitting = true
+			return fm, tea.Quit
+
 		case "r": // Refresh - it will cause the parent of the currently selected item to delete all children and re-fetch them.
 			parent := fm.Tree.ActiveItem.GetParent()
 			parent.Refresh()
@@ -203,5 +210,5 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
+	fmt.Println(m.(*FileBrowserModel).result)
 }
