@@ -1,14 +1,17 @@
 package itemeditor
 
 import (
-	"log"
+	"fmt"
 	"reflect"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/greenenergy/greenbubbles/teatree"
 )
 
-func IterateStructFields(structInput interface{}) {
+func IterateStructFields(structInput interface{}) []string {
+	var results []string
 	val := reflect.ValueOf(structInput)
 	if val.Kind() == reflect.Ptr {
 		val = val.Elem()
@@ -16,8 +19,7 @@ func IterateStructFields(structInput interface{}) {
 
 	// Check if the input is indeed a struct
 	if val.Kind() != reflect.Struct {
-		log.Println("Provided input is not a struct!")
-		return
+		return nil
 	}
 
 	// Iterate over the struct fields
@@ -28,24 +30,19 @@ func IterateStructFields(structInput interface{}) {
 		// Check if the field is a function
 		// Make sure it returns only one result, a string:
 		if value.Kind() == reflect.Func && value.Type().NumOut() == 1 && value.Type().Out(0).Kind() == reflect.String {
-			results := value.Call(nil) // Call the function without arguments
-			if len(results) > 0 {
+			funcResults := value.Call(nil) // Call the function without arguments
+			if len(funcResults) > 0 {
 				// Capture and print the return value
-				log.Printf("Field Name: %s, Field Type: %s, Function Return Value: %s\n", field.Name, field.Type, results[0].String())
+				//log.Printf("Field Name: %s, Field Type: %s, Function Return Value: %s\n", field.Name, field.Type, funcResults[0].String())
+				results = append(results, fmt.Sprintf("%s:%s", field.Name, funcResults[0].String()))
 			}
 		} else {
-			log.Printf("Field Name: %s, Field Type: %s, Field Value: %v\n", field.Name, field.Type, value)
+			//log.Printf("Field Name: %s, Field Type: %s, Field Value: %v\n", field.Name, field.Type, value)
+			results = append(results, fmt.Sprintf("%s:%s", field.Name, value))
 		}
 	}
 
-	//// Iterate over the struct fields
-	//for i := 0; i < val.NumField(); i++ {
-	//	field := val.Type().Field(i)
-	//	value := val.Field(i)
-
-	//	// You can do something specific based on the field name, type, or value here
-	//	fmt.Printf("Field Name: %s, Field Type: %s, Field Value: %v\n", field.Name, field.Type, value)
-	//}
+	return results
 }
 
 type ItemEntry struct {
@@ -62,7 +59,7 @@ func (il *ItemList) AddItem(ie *ItemEntry) error {
 }
 
 type ItemCollectionEditor struct {
-	Width       int
+	Width       int // The width is for the whole control, giving the tree view the left half (so half this value)
 	Height      int
 	initialized bool
 	Tree        *teatree.Tree
@@ -85,10 +82,16 @@ func (ice *ItemCollectionEditor) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		ice.initialized = true
 	}
 
-	switch msg := msg.(type) {
+	switch tmsg := msg.(type) {
 	case tea.WindowSizeMsg:
 		// The help box at the bottom spreads across both upper views
-		log.Println("Got a size msg:", msg)
+		ice.Width = tmsg.Width
+		ice.Height = tmsg.Height
+		// Get the full width and then pass half width onto the tree
+		msg = tea.WindowSizeMsg{
+			Width:  tmsg.Width / 2,
+			Height: tmsg.Height,
+		}
 	}
 	_, cmd := ice.Tree.Update(msg)
 	return ice, cmd
@@ -101,6 +104,12 @@ func (ice *ItemCollectionEditor) View() string {
 	if ice.quitting {
 		return "Bye!\n"
 	}
-	return ice.Tree.View()
-	//return ice.help.View(nil)
+	treeview := ice.Tree.View()
+	itemDump := IterateStructFields(ice.Tree.ActiveItem.Data)
+	activeView := strings.Join(itemDump, "\n")
+
+	s := lipgloss.JoinHorizontal(
+		lipgloss.Top, treeview, activeView,
+	)
+	return s
 }

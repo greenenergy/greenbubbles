@@ -58,7 +58,12 @@ type TreeItem struct {
 	iconStyle       func(*TreeItem) lipgloss.Style // Function returns the style for the icon, intended for color
 	entering        func(*TreeItem)                // Called when the user selects the item
 	exiting         func(*TreeItem)                // Called when the user deselects the item
+	selectFunc      func(*TreeItem)
 	indent          int
+}
+
+func (ti *TreeItem) SetSelectFunc(sf func(*TreeItem)) {
+	ti.selectFunc = sf
 }
 
 func (ti *TreeItem) Icon() string {
@@ -86,6 +91,19 @@ func (ti *TreeItem) GetParent() ItemHolder {
 }
 
 func (ti *TreeItem) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch tmsg := msg.(type) {
+	case tea.KeyMsg:
+		switch tmsg.String() {
+		case "enter":
+			log.Println("-- at TreeItem.Update(), user hit enter")
+			if ti.selectFunc != nil {
+				log.Println("-- selectFunc not nil, executing")
+				ti.selectFunc(ti)
+			} else {
+				log.Println("-- selectFunc nil, not executing")
+			}
+		}
+	}
 	return ti, nil
 }
 
