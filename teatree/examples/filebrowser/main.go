@@ -46,7 +46,12 @@ func (fm *FileBrowserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch tmsg.String() {
 		case "enter":
-			fm.result = path.Join(append([]string{fm.dir}, fm.Tree.ActiveItem.GetPath()...)...)
+			// TODO: If you select something in your current directory ".", then the file will be named
+			// ".whatever" instead of "./whatever". For some reason the slash is not imserted between
+			// the value of fm.dir and the first actual path value.
+			fullList := append([]string{fm.dir}, fm.Tree.ActiveItem.GetPath()...)
+			log.Println("returning:", fullList)
+			fm.result = path.Join(fullList...)
 			fm.quitting = true
 			return fm, tea.Quit
 

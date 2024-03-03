@@ -56,6 +56,8 @@ type TreeItem struct {
 	icon            func(*TreeItem) string         // Function returns what the icon should be.
 	labelStyle      func(*TreeItem) lipgloss.Style // Function returns the style for the label, intended for color
 	iconStyle       func(*TreeItem) lipgloss.Style // Function returns the style for the icon, intended for color
+	entering        func(*TreeItem)                // Called when the user selects the item
+	exiting         func(*TreeItem)                // Called when the user deselects the item
 	indent          int
 }
 
@@ -103,17 +105,6 @@ func (ti *TreeItem) GetItems() []*TreeItem {
 // SelectPrevious - this is being invoked on a TreeItem that is currently selected and the
 // user wants to move up to the previous selection. This will involve recursively going up the
 // tree until we find the one to select or we get to the top
-//
-// TODO: SelectPrevious() does not work in the following situation:
-//
-// 󰅀 Item 1
-//    Sub 1
-//      SubSub 1   **TOHERE
-// 󰅀 Item 2	**FROMHERE
-//    AA
-//    BB
-// 󰅂 Item 3
-
 func (ti *TreeItem) SelectPrevious() {
 
 	// User has pressed 'up'. If we're at the top of the "view", then we want to try and scroll up by one
@@ -560,7 +551,13 @@ func (t *Tree) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (t *Tree) SetActive(ti *TreeItem) {
+	if t.ActiveItem.exiting != nil {
+		t.ActiveItem.exiting(t.ActiveItem)
+	}
 	t.ActiveItem = ti
+	if t.ActiveItem.entering != nil {
+		t.ActiveItem.entering(t.ActiveItem)
+	}
 }
 
 // ScrollDown moves the "display" area down the virtual list. This actually looks like scrolling up ((the items move up the screen) Not sure if this is counterintuitive or not
