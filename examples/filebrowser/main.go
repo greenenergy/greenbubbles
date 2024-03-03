@@ -1,7 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"os"
@@ -52,6 +54,7 @@ func (fm *FileBrowserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fullList := append([]string{fm.dir}, fm.Tree.ActiveItem.GetPath()...)
 			log.Println("returning:", fullList)
 			fm.result = path.Join(fullList...)
+			log.Println("result:", fm.result)
 			fm.quitting = true
 			return fm, tea.Quit
 
@@ -198,20 +201,28 @@ func New(dir string) tea.Model {
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	var debug = flag.Bool("d", false, "create debug log")
+	flag.Parse()
+
+	if len(flag.Args()) < 1 {
 		fmt.Println("usage: filebrowser <foldername>")
 		return
 	}
 	// Since Bubbletea captures all console I/O, we can just write
 	// everything to a logfile instead and tail that separately
-	f, err := tea.LogToFile("debug.log", "debug")
-	if err != nil {
-		fmt.Println("problem opening log file:", err.Error())
-		return
-	}
-	defer f.Close()
+	if debug != nil && *debug {
+		f, err := tea.LogToFile("debug.log", "debug")
+		if err != nil {
+			fmt.Println("problem opening log file:", err.Error())
+			return
+		}
+		defer f.Close()
 
-	dir := os.Args[1]
+	} else {
+		log.SetOutput(io.Discard)
+	}
+
+	dir := flag.Arg(0)
 	m := New(dir)
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
