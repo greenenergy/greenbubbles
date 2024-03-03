@@ -92,6 +92,13 @@ func (ice *ItemCollectionEditor) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Width:  tmsg.Width / 2,
 			Height: tmsg.Height,
 		}
+	case tea.KeyMsg:
+		switch tmsg.String() {
+		case "right", "l":
+			ice.quitting = true
+			return ice, tea.Quit
+		}
+
 	}
 	_, cmd := ice.Tree.Update(msg)
 	return ice, cmd
