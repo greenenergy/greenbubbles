@@ -92,6 +92,9 @@ func (a *App) Init() tea.Cmd {
 }
 
 func (a *App) View() string {
+	if a.quitting {
+		return ""
+	}
 	return a.ItemEditor.View()
 }
 

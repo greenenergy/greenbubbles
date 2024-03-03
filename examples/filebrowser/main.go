@@ -83,6 +83,9 @@ func (fm *FileBrowserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (fm *FileBrowserModel) View() string {
+	if fm.quitting {
+		return ""
+	}
 	return fm.Tree.View()
 }
 
