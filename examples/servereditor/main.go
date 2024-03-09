@@ -1,7 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 
@@ -42,7 +44,6 @@ func New() *App {
 
 	additem := teatree.NewItem("[Add Server]", false, nil, nil, nil, nil, nil, nil, nil)
 	additem.SetSelectFunc(func(ti *teatree.TreeItem) {
-		log.Println("--- at SelectFunc ---")
 		app.ItemEditor.Tree.AddChildren(teatree.NewItem("<unnamed>", false, nil, nil, nil, nil, nil, nil, NewServerDefinition()))
 	})
 	app.ItemEditor.Tree.AddChildren(additem)
@@ -85,6 +86,7 @@ type App struct {
 	Width      int
 	Height     int
 	quitting   bool
+	popup      bool
 }
 
 func (a *App) Init() tea.Cmd {
@@ -95,13 +97,38 @@ func (a *App) View() string {
 	if a.quitting {
 		return ""
 	}
-	return a.ItemEditor.View()
+	v := a.ItemEditor.View()
+	if !a.popup {
+		return v
+	}
+	return ""
+	/*
+		// Draw a box 50% of the available space, in the center of the area
+		left := lipgloss.Position(a.Width / 4
+		top := a.Height / 4
+		var t lipgloss.Position
+		width := a.Width / 2
+		height := a.Height / 2
+
+		itemDump := itemeditor.IterateStructFields(a.ItemEditor.Tree.ActiveItem.Data)
+		data := strings.Join(itemDump, "\n")
+		var opts lipgloss.WhitespaceOption
+
+		//newbox := lipgloss.NewStyle()
+
+		box := lipgloss.Place(width, height, left, top, data, opts)
+		return strings.Join([]string{v, box}, "\n")
+	*/
 }
 
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch tmsg := msg.(type) {
 	case tea.KeyMsg:
+		log.Println("keymsg:", tmsg.String())
 		switch tmsg.String() {
+		case " ":
+			a.popup = !a.popup
+			log.Println("popup:", a.popup)
 		case "ctrl+c", "q":
 			a.quitting = true
 			return a, tea.Quit
@@ -114,12 +141,23 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func main() {
-	f, err := tea.LogToFile("debug.log", "debug")
-	if err != nil {
-		fmt.Println("problem opening log file:", err.Error())
-		return
+	var debug = flag.Bool("d", false, "create debug log")
+	flag.Parse()
+
+	// Since Bubbletea captures all console I/O, we can just write
+	// everything to a logfile instead and tail that separately
+	if debug != nil && *debug {
+		f, err := tea.LogToFile("debug.log", "debug")
+		if err != nil {
+			fmt.Println("problem opening log file:", err.Error())
+			return
+		}
+		defer f.Close()
+
+	} else {
+		// If there is no debug desired, then silence it
+		log.SetOutput(io.Discard)
 	}
-	defer f.Close()
 
 	m := New()
 	p := tea.NewProgram(m)
