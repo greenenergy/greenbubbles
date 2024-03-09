@@ -219,6 +219,7 @@ func main() {
 		defer f.Close()
 
 	} else {
+		// If there is no debug desired, then silence it
 		log.SetOutput(io.Discard)
 	}
 

@@ -236,6 +236,29 @@ func (ti *TreeItem) SelectNext() {
 	}
 }
 
+// SelectLast - starting from the current Item, descend in the last child of the last child and set
+// that as the active item. Also need to set the topline ff
+func (ti *TreeItem) SelectLast() {
+	//numchildren := ti.ParentTree.CountVisibleItems()
+	if ti.CanHaveChildren && ti.Open && len(ti.Children) > 0 {
+		ti.Children[len(ti.Children)-1].SelectLast()
+		return
+	}
+	// If I can't have any children, then I am the one to be selected
+	ti.ParentTree.ActiveItem = ti
+}
+
+// CountItemAndChildren - returns the count of this item plus any visible children.
+func (ti *TreeItem) CountItemAndChildren() int {
+	total := 1
+	if ti.CanHaveChildren && ti.Open {
+		for _, i := range ti.Children {
+			total += i.CountItemAndChildren()
+		}
+	}
+	return total
+}
+
 func (ti *TreeItem) ViewScrolled(viewtop, curline, bottomline int) (int, string) {
 	// Return the view string for myself plus my children if I am open
 	var pre_s string
@@ -525,6 +548,17 @@ func (t *Tree) SelectNext() {
 	}
 }
 
+func (t *Tree) SelectFirst() {
+	t.ActiveItem = t.Items[0]
+	t.ActiveLine = 0
+	t.ActiveItem.SelectPrevious()
+}
+
+func (t *Tree) SelectLast() {
+	t.ActiveItem = t.Items[len(t.Items)-1]
+	t.ActiveItem.SelectLast()
+}
+
 // ToggleChild will toggle the open/closed state of the current selection. This only has meaning if there
 // are actually children
 func (t *Tree) ToggleChild() {
@@ -556,6 +590,10 @@ func (t *Tree) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case " ", ".":
 			t.ToggleChild()
 			return t, nil
+		case "g": // go to top
+			t.SelectFirst()
+		case "G": // Go to bottom
+			t.SelectLast()
 		}
 	}
 
@@ -576,6 +614,14 @@ func (t *Tree) SetActive(ti *TreeItem) {
 	if t.ActiveItem.entering != nil {
 		t.ActiveItem.entering(t.ActiveItem)
 	}
+}
+
+func (t *Tree) CountVisibleItems() int {
+	total := 0
+	for _, i := range t.Items {
+		total += i.CountItemAndChildren()
+	}
+	return total
 }
 
 // ScrollDown moves the "display" area down the virtual list. This actually looks like scrolling up ((the items move up the screen) Not sure if this is counterintuitive or not
