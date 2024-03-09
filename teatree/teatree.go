@@ -1,6 +1,7 @@
 package teatree
 
 import (
+	"encoding/json"
 	"log"
 	"strings"
 	"sync"
@@ -44,15 +45,15 @@ var (
 
 type TreeItem struct {
 	sync.Mutex
-	ParentTree      *Tree
-	Parent          ItemHolder
+	parentTree      *Tree      `json:"-"`
+	parent          ItemHolder `json:"-"`
 	Name            string
 	Children        []*TreeItem
 	CanHaveChildren bool // CanHaveChildren: By setting this to True, you say that this item can have children. This allows for the implementation of a lazy loader, when you supply an Open() function. This affects how the item is rendered.
 	Open            bool
 	Data            interface{}
-	OpenFunc        func(*TreeItem)
-	CloseFunc       func(*TreeItem)
+	OpenFunc        func(*TreeItem)                `json:"-"`
+	CloseFunc       func(*TreeItem)                `json:"-"`
 	icon            func(*TreeItem) string         // Function returns what the icon should be.
 	labelStyle      func(*TreeItem) lipgloss.Style // Function returns the style for the label, intended for color
 	iconStyle       func(*TreeItem) lipgloss.Style // Function returns the style for the icon, intended for color
@@ -87,7 +88,7 @@ func (ti *TreeItem) LabelStyle() lipgloss.Style {
 }
 
 func (ti *TreeItem) GetParent() ItemHolder {
-	return ti.Parent
+	return ti.parent
 }
 
 func (ti *TreeItem) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -129,7 +130,7 @@ func (ti *TreeItem) SelectPrevious() {
 	// We do this by checking the viewtop value. If it is > 0, then the view has scrolled down, so we
 	// can decrement it by one.
 
-	tree := ti.ParentTree
+	tree := ti.parentTree
 	atTop := false
 
 	if tree.ActiveLine == 0 {
@@ -138,7 +139,7 @@ func (ti *TreeItem) SelectPrevious() {
 		tree.ActiveLine -= 1
 	}
 
-	siblingItems := ti.Parent.GetItems()
+	siblingItems := ti.GetParent().GetItems()
 
 	for x, item := range siblingItems {
 		if item == ti {
@@ -158,22 +159,22 @@ func (ti *TreeItem) SelectPrevious() {
 						if atTop {
 							tree.ScrollUp(1)
 						}
-						item.ParentTree.SetActive(newItem)
+						item.parentTree.SetActive(newItem)
 						return
 					}
 
-					//item.ParentTree.ActiveItem = siblingItems[x-1]
+					//item.parentTree.ActiveItem = siblingItems[x-1]
 				}
 			} else {
 				// Nope, we were at the top. So now we just activate our Parent
 				// Just make sure the parent is an item and not the tree. If it's the tree,
 				// then we stop
-				par, ok := ti.Parent.(*TreeItem)
+				par, ok := ti.GetParent().(*TreeItem)
 				if ok {
 					if atTop {
 						tree.ScrollUp(1)
 					}
-					item.ParentTree.SetActive(par)
+					item.parentTree.SetActive(par)
 				}
 			}
 			return
@@ -185,7 +186,7 @@ func (ti *TreeItem) SelectPrevious() {
 func (ti *TreeItem) SelectNext() {
 	// See if we need to scroll first:
 
-	tree := ti.ParentTree
+	tree := ti.parentTree
 
 	atBottom := false
 	windowBottom := tree.Height
@@ -197,11 +198,11 @@ func (ti *TreeItem) SelectNext() {
 	}
 	descend := true
 	for {
-		parentItems := ti.Parent.GetItems()
+		parentItems := ti.GetParent().GetItems()
 
 		// Check to see if we are going down into a child. If so, select the first child
 		if len(ti.Children) > 0 && ti.Open && descend {
-			ti.ParentTree.SetActive(ti.Children[0])
+			ti.parentTree.SetActive(ti.Children[0])
 			if atBottom {
 				tree.ScrollDown(1)
 			}
@@ -215,7 +216,7 @@ func (ti *TreeItem) SelectNext() {
 			if item == ti {
 				if x+1 < len(parentItems) {
 					// Select the sibling if there is one
-					ti.ParentTree.SetActive(parentItems[x+1])
+					ti.parentTree.SetActive(parentItems[x+1])
 					if atBottom {
 						tree.ScrollDown(1)
 					}
@@ -224,7 +225,7 @@ func (ti *TreeItem) SelectNext() {
 				}
 			}
 		}
-		if ti.Parent == ti.ParentTree {
+		if ti.parent == ti.parentTree {
 			// We've hit the top
 			return
 		}
@@ -232,20 +233,20 @@ func (ti *TreeItem) SelectNext() {
 		// So we now need to tell our parent to choose a sibling. We turn off descent because
 		// we aren't here going into an item, because we've already gone beyond the end of a list
 		descend = false
-		ti = ti.Parent.(*TreeItem)
+		ti = ti.GetParent().(*TreeItem)
 	}
 }
 
 // SelectLast - starting from the current Item, descend in the last child of the last child and set
 // that as the active item. Also need to set the topline ff
 func (ti *TreeItem) SelectLast() {
-	//numchildren := ti.ParentTree.CountVisibleItems()
+	//numchildren := ti.parentTree.CountVisibleItems()
 	if ti.CanHaveChildren && ti.Open && len(ti.Children) > 0 {
 		ti.Children[len(ti.Children)-1].SelectLast()
 		return
 	}
 	// If I can't have any children, then I am the one to be selected
-	ti.ParentTree.ActiveItem = ti
+	ti.parentTree.ActiveItem = ti
 }
 
 // CountItemAndChildren - returns the count of this item plus any visible children.
@@ -275,7 +276,7 @@ func (ti *TreeItem) ViewScrolled(viewtop, curline, bottomline int) (int, string)
 		pre_s += NoChevron
 	}
 
-	ai := ti.ParentTree.ActiveItem
+	ai := ti.parentTree.ActiveItem
 
 	var s string
 	render := true
@@ -344,7 +345,7 @@ func (ti *TreeItem) View() string {
 		s += NoChevron
 	}
 
-	ai := ti.ParentTree.ActiveItem
+	ai := ti.parentTree.ActiveItem
 
 	if ai != nil && ai == ti {
 		// If this is the active item, then we should be highlit
@@ -374,8 +375,8 @@ func (ti *TreeItem) View() string {
 
 func (ti *TreeItem) GetPath() []string {
 	var path []string
-	if ti.Parent != nil {
-		path = ti.Parent.GetPath()
+	if ti.parent != nil {
+		path = ti.parent.GetPath()
 	}
 	return append(path, ti.Name)
 }
@@ -414,8 +415,8 @@ func (ti *TreeItem) AddChildren(children ...*TreeItem) ItemHolder {
 	ti.CanHaveChildren = true // If it wasn't set before, it will be now
 
 	for _, child := range children {
-		child.Parent = ti
-		child.ParentTree = ti.ParentTree
+		child.parent = ti
+		child.parentTree = ti.parentTree
 	}
 
 	return ti
@@ -451,14 +452,14 @@ type KeyMap struct {
 
 type Tree struct {
 	sync.Mutex
-	viewtop              int // for scrolling
+	Viewtop              int // for scrolling
 	Width                int
 	Height               int
 	ClosedChildrenSymbol string
 	OpenChildrenSymbol   string
 	ActiveItem           *TreeItem
-	ActiveLine           int // Which line, (from 0..Height) is the cursor on?
-	Items                []*TreeItem
+	ActiveLine           int         // Which line, (from 0..Height) is the cursor on?
+	Items                []*TreeItem `json:"-"`
 	initialized          bool
 	Style                lipgloss.Style
 	KeyMap               KeyMap
@@ -512,8 +513,8 @@ func (t *Tree) AddChildren(i ...*TreeItem) ItemHolder {
 		t.ActiveItem = t.Items[0]
 	}
 	for _, item := range i {
-		item.Parent = t
-		item.ParentTree = t
+		item.parent = t
+		item.parentTree = t
 	}
 	return t
 }
@@ -552,11 +553,22 @@ func (t *Tree) SelectFirst() {
 	t.ActiveItem = t.Items[0]
 	t.ActiveLine = 0
 	t.ActiveItem.SelectPrevious()
+	t.Viewtop = 0
 }
 
 func (t *Tree) SelectLast() {
-	t.ActiveItem = t.Items[len(t.Items)-1]
-	t.ActiveItem.SelectLast()
+	t.Items[len(t.Items)-1].SelectLast()
+	t.ActiveLine = t.Height - 1
+
+	t.Viewtop = t.CountVisibleItems() - t.Height
+
+	log.Println("After SelectLast:")
+	tmps, err := json.MarshalIndent(t, "", "    ")
+	if err != nil {
+		log.Println("error formatting:", err.Error())
+	} else {
+		log.Println(string(tmps))
+	}
 }
 
 // ToggleChild will toggle the open/closed state of the current selection. This only has meaning if there
@@ -626,11 +638,11 @@ func (t *Tree) CountVisibleItems() int {
 
 // ScrollDown moves the "display" area down the virtual list. This actually looks like scrolling up ((the items move up the screen) Not sure if this is counterintuitive or not
 func (t *Tree) ScrollDown(n int) {
-	t.viewtop += n
+	t.Viewtop += n
 }
 
 func (t *Tree) ScrollUp(n int) {
-	t.viewtop -= n
+	t.Viewtop -= n
 }
 
 func (t *Tree) View() string {
@@ -640,12 +652,12 @@ func (t *Tree) View() string {
 	var views []string
 
 	// Iterate through the children, calling View() on each of them.
-	curline := -t.viewtop
+	curline := -t.Viewtop
 	bottom := t.Height
 	var v string
 	for _, item := range t.Items {
 		item.indent = 0
-		curline, v = item.ViewScrolled(t.viewtop, curline, bottom)
+		curline, v = item.ViewScrolled(t.Viewtop, curline, bottom)
 		if curline > bottom {
 			break
 		}
