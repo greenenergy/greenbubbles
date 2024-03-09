@@ -502,6 +502,7 @@ func (t *Tree) GetParent() ItemHolder {
 
 func (t *Tree) AddChildren(i ...*TreeItem) ItemHolder {
 	if len(i) == 0 {
+		log.Println("*** No items provided to AddChildren(), doing nothing")
 		return t
 	}
 	t.Lock()

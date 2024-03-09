@@ -16,7 +16,7 @@ import (
 type ServerDefinition struct {
 	Name        string        `json:"name"`
 	Host        string        `json:"host"`
-	SigningCert func() string `json:"signing_cert"`
+	SigningCert func() string `json:"-"`
 	AuthPort    int           `json:"auth_port"`
 	CmdPort     int           `json:"cmd_port"`
 	certdata    string
@@ -42,8 +42,15 @@ func New() *App {
 		ItemEditor: itemeditor.NewEditor(),
 	}
 
-	additem := teatree.NewItem("[Add Server]", false, nil, nil, nil, nil, nil, nil, nil)
+	addServerLabelStyle := func(ti *teatree.TreeItem) lipgloss.Style {
+		return lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#0000FF")).
+			Background(lipgloss.Color("#000030"))
+	}
+
+	additem := teatree.NewItem("[Add Server]", false, nil, nil, addServerLabelStyle, nil, nil, nil, nil)
 	additem.SetSelectFunc(func(ti *teatree.TreeItem) {
+		log.Println("at SelectFunc - should add a new child")
 		app.ItemEditor.Tree.AddChildren(teatree.NewItem("<unnamed>", false, nil, nil, nil, nil, nil, nil, NewServerDefinition()))
 	})
 	app.ItemEditor.Tree.AddChildren(additem)
