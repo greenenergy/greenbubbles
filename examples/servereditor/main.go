@@ -1,11 +1,13 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"strconv"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
@@ -104,6 +106,20 @@ func (a *App) Init() tea.Cmd {
 // func (a *App) EditServerDefinition(sd *ServerDefinition) error {
 func (a *App) EditServerDefinition(ti *teatree.TreeItem) error {
 	sd := ti.Data.(*ServerDefinition)
+	authPortStr := strconv.Itoa(sd.AuthPort)
+	cmdPortStr := strconv.Itoa(sd.CmdPort)
+
+	validPortFunc := func(str string) error {
+		port, err := strconv.Atoi(str)
+		if err != nil {
+			return errors.New("Sorry, must be a valid port number from 1-65535")
+		}
+		if port < 0 || port > 65535 {
+			return errors.New("Sorry, must be a valid port number from 1-65535")
+		}
+		return nil
+	}
+
 	form := huh.NewForm(
 		// Need to edit:
 		huh.NewGroup(
@@ -118,6 +134,20 @@ func (a *App) EditServerDefinition(ti *teatree.TreeItem) error {
 				Placeholder("localhost").
 				Description("host name"),
 		),
+		huh.NewGroup(
+			huh.NewInput().
+				Value(&authPortStr).
+				Title("Auth Port").
+				Placeholder("50001").
+				Validate(validPortFunc).
+				Description("Authentication port, only for login. 1-65535"),
+			huh.NewInput().
+				Value(&cmdPortStr).
+				Title("Cmd Port").
+				//Placeholder("50000").
+				Validate(validPortFunc).
+				Description("Command port. All commands go here. 1-65535"),
+		),
 		// SigningCert: read from a file
 		// AuthPort int
 		// CmdPort int
@@ -125,6 +155,8 @@ func (a *App) EditServerDefinition(ti *teatree.TreeItem) error {
 	)
 	err := form.Run()
 	ti.Name = sd.Name
+	sd.AuthPort, _ = strconv.Atoi(authPortStr)
+	sd.CmdPort, _ = strconv.Atoi(cmdPortStr)
 
 	return err
 }

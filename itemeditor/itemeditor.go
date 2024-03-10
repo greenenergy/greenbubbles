@@ -38,7 +38,7 @@ func IterateStructFields(structInput interface{}) []string {
 			}
 		} else {
 			//log.Printf("Field Name: %s, Field Type: %s, Field Value: %v\n", field.Name, field.Type, value)
-			results = append(results, fmt.Sprintf("%s:%s", field.Name, value))
+			results = append(results, fmt.Sprintf("%s:%v", field.Name, value))
 		}
 	}
 
