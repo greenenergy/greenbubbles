@@ -111,10 +111,7 @@ func (a *App) EditServerDefinition(ti *teatree.TreeItem) error {
 
 	validPortFunc := func(str string) error {
 		port, err := strconv.Atoi(str)
-		if err != nil {
-			return errors.New("Sorry, must be a valid port number from 1-65535")
-		}
-		if port < 0 || port > 65535 {
+		if err != nil || port < 0 || port > 65535 {
 			return errors.New("Sorry, must be a valid port number from 1-65535")
 		}
 		return nil
@@ -144,13 +141,11 @@ func (a *App) EditServerDefinition(ti *teatree.TreeItem) error {
 			huh.NewInput().
 				Value(&cmdPortStr).
 				Title("Cmd Port").
-				//Placeholder("50000").
+				Placeholder("50000").
 				Validate(validPortFunc).
 				Description("Command port. All commands go here. 1-65535"),
 		),
 		// SigningCert: read from a file
-		// AuthPort int
-		// CmdPort int
 
 	)
 	err := form.Run()
