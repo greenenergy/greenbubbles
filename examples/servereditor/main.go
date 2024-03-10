@@ -8,6 +8,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/greenenergy/greenbubbles/itemeditor"
 	"github.com/greenenergy/greenbubbles/teatree"
@@ -100,6 +101,34 @@ func (a *App) Init() tea.Cmd {
 	return nil
 }
 
+// func (a *App) EditServerDefinition(sd *ServerDefinition) error {
+func (a *App) EditServerDefinition(ti *teatree.TreeItem) error {
+	sd := ti.Data.(*ServerDefinition)
+	form := huh.NewForm(
+		// Need to edit:
+		huh.NewGroup(
+			huh.NewInput().
+				Value(&sd.Name).
+				Title("Server name").
+				Placeholder("dev").
+				Description("Mnemonic for server"),
+			huh.NewInput().
+				Value(&sd.Host).
+				Title("Host Addr").
+				Placeholder("localhost").
+				Description("host name"),
+		),
+		// SigningCert: read from a file
+		// AuthPort int
+		// CmdPort int
+
+	)
+	err := form.Run()
+	ti.Name = sd.Name
+
+	return err
+}
+
 func (a *App) View() string {
 	if a.quitting {
 		return ""
@@ -108,6 +137,13 @@ func (a *App) View() string {
 	if !a.popup {
 		return v
 	}
+	// Now do a form for the ServerDefinition
+
+	if err := a.EditServerDefinition(a.ItemEditor.Tree.ActiveItem); err != nil {
+		log.Println("*** Error editing server def:", err.Error())
+	}
+	a.popup = false
+
 	return ""
 	/*
 		// Draw a box 50% of the available space, in the center of the area
