@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -463,6 +464,86 @@ type Tree struct {
 	initialized          bool
 	Style                lipgloss.Style
 	KeyMap               KeyMap
+	err                  error
+	theme                *huh.Theme
+	key                  string
+	accessible           bool
+	keymap               huh.InputKeyMap
+}
+
+func (t *Tree) Blur() tea.Cmd {
+	return nil
+}
+
+func (t *Tree) Focus() tea.Cmd {
+	return nil
+}
+
+func (t *Tree) Error() error {
+	return t.err
+}
+
+// Run runs the field individually.
+func (t *Tree) Run() error {
+	return nil
+}
+
+// Skip returns whether this input should be skipped or not.
+func (t *Tree) Skip() bool {
+	return false
+}
+
+func (t *Tree) KeyBinds() []key.Binding {
+	return nil
+}
+
+// GetValue returns the field's value.
+func (t *Tree) GetValue() any {
+	return t.ActiveItem.GetPath()
+}
+
+// GetKey returns the field's key.
+func (t *Tree) GetKey() string {
+	return t.key
+}
+
+// WithHeight sets the height of the input field.
+func (t *Tree) WithHeight(height int) huh.Field {
+	t.Height = height
+	return t
+}
+
+// WithPosition sets the position of the input field.
+func (t *Tree) WithPosition(p huh.FieldPosition) huh.Field {
+	//i.keymap.Prev.SetEnabled(!p.IsFirst())
+	//i.keymap.Next.SetEnabled(!p.IsLast())
+	//i.keymap.Submit.SetEnabled(p.IsLast())
+	return t
+}
+
+// WithTheme sets the theme on a field.
+func (t *Tree) WithTheme(theme *huh.Theme) huh.Field {
+	t.theme = theme
+	return t
+}
+
+// WithAccessible sets the accessible mode of the input field.
+func (t *Tree) WithAccessible(accessible bool) huh.Field {
+	t.accessible = accessible
+	return t
+}
+
+// WithKeyMap sets the keymap on an input field.
+func (t *Tree) WithKeyMap(k *huh.KeyMap) huh.Field {
+	t.keymap = k.Input
+	//t.textinput.KeyMap.AcceptSuggestion = i.keymap.AcceptSuggestion
+	return t
+}
+
+// WithWidth sets the width of the input field.
+func (t *Tree) WithWidth(width int) huh.Field {
+	t.Width = width
+	return t
 }
 
 func DefaultKeyMap() KeyMap {
@@ -524,6 +605,8 @@ func (t *Tree) GetItems() []*TreeItem {
 	return t.Items
 }
 
+// This GetPath() represents the path from the root of the tree to here. Since this IS the root of the tree,
+// then it must return nothing.
 func (t *Tree) GetPath() []string {
 	return []string{}
 }

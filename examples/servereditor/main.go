@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/greenenergy/greenbubbles/filebrowser"
 	"github.com/greenenergy/greenbubbles/itemeditor"
 	"github.com/greenenergy/greenbubbles/teatree"
 )
@@ -144,6 +145,9 @@ func (a *App) EditServerDefinition(ti *teatree.TreeItem) error {
 				Placeholder("50000").
 				Validate(validPortFunc).
 				Description("Command port. All commands go here. 1-65535"),
+		),
+		huh.NewGroup(
+			filebrowser.New("/"),
 		),
 		// SigningCert: read from a file
 

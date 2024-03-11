@@ -1,16 +1,13 @@
-package main
+package filebrowser
 
 import (
-	"flag"
-	"fmt"
-	"io"
 	"io/fs"
 	"log"
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/greenenergy/greenbubbles/teatree"
@@ -29,7 +26,57 @@ type FileBrowserModel struct {
 	Tree     *teatree.Tree
 	info     func()
 	quitting bool
+	err      error
 }
+
+func (fbm *FileBrowserModel) Blur() tea.Cmd {
+	return fbm.Tree.Blur()
+}
+
+func (fbm *FileBrowserModel) Focus() tea.Cmd {
+	return fbm.Tree.Focus()
+}
+
+func (fbm *FileBrowserModel) Error() error {
+	return fbm.err
+}
+
+func (fbm *FileBrowserModel) Run() error {
+	return fbm.Tree.Run()
+}
+
+func (fbm *FileBrowserModel) KeyBinds() []key.Binding {
+	return fbm.Tree.KeyBinds()
+}
+
+/*
+type Field interface {
+	// WithTheme sets the theme on a field.
+	WithTheme(*Theme) Field
+
+	// WithAccessible sets whether the field should run in accessible mode.
+	WithAccessible(bool) Field
+
+	// WithKeyMap sets the keymap on a field.
+	WithKeyMap(*KeyMap) Field
+
+	// WithWidth sets the width of a field.
+	WithWidth(int) Field
+
+	// WithHeight sets the height of a field.
+	WithHeight(int) Field
+
+	// WithPosition tells the field the index of the group and position it is in.
+	WithPosition(FieldPosition) Field
+
+	// GetKey returns the field's key.
+	GetKey() string
+
+	// GetValue returns the field's value.
+	GetValue() any
+}
+
+*/
 
 func (fm *FileBrowserModel) Init() tea.Cmd {
 	return nil
@@ -200,35 +247,6 @@ func New(dir string) tea.Model {
 	return fm
 }
 
-func main() {
-	var debug = flag.Bool("d", false, "create debug log")
-	flag.Parse()
-
-	if len(flag.Args()) < 1 {
-		fmt.Println("usage: filebrowser <foldername>")
-		return
-	}
-	// Since Bubbletea captures all console I/O, we can just write
-	// everything to a logfile instead and tail that separately
-	if debug != nil && *debug {
-		f, err := tea.LogToFile("debug.log", "debug")
-		if err != nil {
-			fmt.Println("problem opening log file:", err.Error())
-			return
-		}
-		defer f.Close()
-
-	} else {
-		// If there is no debug desired, then silence it
-		log.SetOutput(io.Discard)
-	}
-
-	dir := flag.Arg(0)
-	m := New(dir)
-	p := tea.NewProgram(m)
-	if _, err := p.Run(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	fmt.Println(m.(*FileBrowserModel).result)
+func (t *FileBrowserModel) Value() string {
+	return t.result
 }
