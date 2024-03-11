@@ -1,6 +1,7 @@
 package filebrowser
 
 import (
+	"encoding/json"
 	"io/fs"
 	"log"
 	"path"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/greenenergy/greenbubbles/teatree"
 )
@@ -22,11 +24,16 @@ const GoTitle = "\U000F07D3"
 
 type FileBrowserModel struct {
 	dir      string
-	result   string
+	result   *string
 	Tree     *teatree.Tree
 	info     func()
 	quitting bool
 	err      error
+}
+
+func (fbm *FileBrowserModel) Value(value *string) *FileBrowserModel {
+	fbm.result = value
+	return fbm
 }
 
 func (fbm *FileBrowserModel) Blur() tea.Cmd {
@@ -45,38 +52,64 @@ func (fbm *FileBrowserModel) Run() error {
 	return fbm.Tree.Run()
 }
 
+// Skip returns whether this input should be skipped or not.
+func (fbm *FileBrowserModel) Skip() bool {
+	return fbm.Tree.Skip()
+}
+
 func (fbm *FileBrowserModel) KeyBinds() []key.Binding {
 	return fbm.Tree.KeyBinds()
 }
 
-/*
-type Field interface {
-	// WithTheme sets the theme on a field.
-	WithTheme(*Theme) Field
-
-	// WithAccessible sets whether the field should run in accessible mode.
-	WithAccessible(bool) Field
-
-	// WithKeyMap sets the keymap on a field.
-	WithKeyMap(*KeyMap) Field
-
-	// WithWidth sets the width of a field.
-	WithWidth(int) Field
-
-	// WithHeight sets the height of a field.
-	WithHeight(int) Field
-
-	// WithPosition tells the field the index of the group and position it is in.
-	WithPosition(FieldPosition) Field
-
-	// GetKey returns the field's key.
-	GetKey() string
-
-	// GetValue returns the field's value.
-	GetValue() any
+// GetValue returns the field's value.
+func (fbm *FileBrowserModel) GetValue() any {
+	return fbm.Tree.GetValue()
 }
 
-*/
+// GetKey returns the field's key.
+func (fbm *FileBrowserModel) GetKey() string {
+	return fbm.Tree.GetKey()
+}
+
+// WithHeight sets the height of the input field.
+func (fbm *FileBrowserModel) WithHeight(height int) huh.Field {
+	fbm.Tree.WithHeight(height)
+	return fbm
+}
+
+// WithWidth sets the width of the input field.
+func (fbm *FileBrowserModel) WithWidth(width int) huh.Field {
+	fbm.Tree.WithWidth(width)
+	return fbm
+}
+
+// WithPosition sets the position of the input field.
+func (fbm *FileBrowserModel) WithPosition(p huh.FieldPosition) huh.Field {
+	//i.keymap.Prev.SetEnabled(!p.IsFirst())
+	//i.keymap.Next.SetEnabled(!p.IsLast())
+	//i.keymap.Submit.SetEnabled(p.IsLast())
+	fbm.Tree.WithPosition(p)
+	return fbm
+}
+
+// WithTheme sets the theme on a field.
+func (fbm *FileBrowserModel) WithTheme(theme *huh.Theme) huh.Field {
+	fbm.Tree.WithTheme(theme)
+	return fbm
+}
+
+// WithAccessible sets the accessible mode of the input field.
+func (fbm *FileBrowserModel) WithAccessible(accessible bool) huh.Field {
+	fbm.Tree.WithAccessible(accessible)
+	return fbm
+}
+
+// WithKeyMap sets the keymap on an input field.
+func (fbm *FileBrowserModel) WithKeyMap(k *huh.KeyMap) huh.Field {
+	fbm.Tree.WithKeyMap(k)
+	//t.textinput.KeyMap.AcceptSuggestion = i.keymap.AcceptSuggestion
+	return fbm
+}
 
 func (fm *FileBrowserModel) Init() tea.Cmd {
 	return nil
@@ -100,7 +133,12 @@ func (fm *FileBrowserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// the value of fm.dir and the first actual path value.
 			fullList := append([]string{fm.dir}, fm.Tree.ActiveItem.GetPath()...)
 			log.Println("returning:", fullList)
-			fm.result = path.Join(fullList...)
+
+			res := path.Join(fullList...)
+			if fm.result != nil {
+				*fm.result = res
+			}
+
 			log.Println("result:", fm.result)
 			fm.quitting = true
 			return fm, tea.Quit
@@ -135,6 +173,12 @@ func (fm *FileBrowserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (fm *FileBrowserModel) View() string {
 	if fm.quitting {
 		return ""
+	}
+	dummy, err := json.MarshalIndent(fm, "", "    ")
+	if err != nil {
+		log.Println("error formatting filebrowser:", err.Error())
+	} else {
+		log.Println("at FileBrowserModel.View():", string(dummy))
 	}
 	return fm.Tree.View()
 }
@@ -232,7 +276,8 @@ func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
 	return nil
 }
 
-func New(dir string) tea.Model {
+// func New(dir string) tea.Model {
+func New(dir string) *FileBrowserModel {
 	fm := &FileBrowserModel{
 		dir:  dir,
 		Tree: teatree.New().(*teatree.Tree),
@@ -245,8 +290,4 @@ func New(dir string) tea.Model {
 		log.Fatal(err)
 	}
 	return fm
-}
-
-func (t *FileBrowserModel) Value() string {
-	return t.result
 }

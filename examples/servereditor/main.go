@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -34,9 +35,7 @@ func NewServerDefinition() *ServerDefinition {
 
 func (sd *ServerDefinition) GetSigningCert() string {
 	if sd.certdata == "" {
-		sd.certdata = "first set"
-	} else {
-		sd.certdata = "second set"
+		sd.certdata = "<unset>"
 	}
 	return sd.certdata
 }
@@ -48,7 +47,7 @@ func New() *App {
 
 	addServerLabelStyle := func(ti *teatree.TreeItem) lipgloss.Style {
 		return lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#0000FF")).
+			Foreground(lipgloss.Color("#00FFFF")).
 			Background(lipgloss.Color("#000030"))
 	}
 
@@ -93,11 +92,12 @@ func New() *App {
 }
 
 type App struct {
-	ItemEditor *itemeditor.ItemCollectionEditor
-	Width      int
-	Height     int
-	quitting   bool
-	popup      bool
+	ItemEditor  *itemeditor.ItemCollectionEditor
+	Width       int
+	Height      int
+	quitting    bool
+	popup       bool
+	initialized bool
 }
 
 func (a *App) Init() tea.Cmd {
@@ -116,6 +116,13 @@ func (a *App) EditServerDefinition(ti *teatree.TreeItem) error {
 			return errors.New("Sorry, must be a valid port number from 1-65535")
 		}
 		return nil
+	}
+
+	dummy, err := json.MarshalIndent(a, "", "    ")
+	if err != nil {
+		log.Println("Error formatting App:", err.Error())
+	} else {
+		log.Println("At EditServerDefinition:", string(dummy))
 	}
 
 	form := huh.NewForm(
@@ -147,12 +154,13 @@ func (a *App) EditServerDefinition(ti *teatree.TreeItem) error {
 				Description("Command port. All commands go here. 1-65535"),
 		),
 		huh.NewGroup(
-			filebrowser.New("/"),
+			filebrowser.New("/").
+				Value(&sd.certdata).
+				WithWidth(a.Width).
+				WithHeight(a.Height),
 		),
-		// SigningCert: read from a file
-
 	)
-	err := form.Run()
+	err = form.Run()
 	ti.Name = sd.Name
 	sd.AuthPort, _ = strconv.Atoi(authPortStr)
 	sd.CmdPort, _ = strconv.Atoi(cmdPortStr)
@@ -175,7 +183,7 @@ func (a *App) View() string {
 	}
 	a.popup = false
 
-	return ""
+	return a.ItemEditor.View()
 	/*
 		// Draw a box 50% of the available space, in the center of the area
 		left := lipgloss.Position(a.Width / 4
@@ -197,6 +205,14 @@ func (a *App) View() string {
 
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch tmsg := msg.(type) {
+	case tea.WindowSizeMsg:
+		a.Width = tmsg.Width
+		a.Height = tmsg.Height
+		if !a.initialized {
+			a.initialized = true
+			return a, tea.ClearScreen
+		}
+
 	case tea.KeyMsg:
 		log.Println("keymsg:", tmsg.String())
 		switch tmsg.String() {
