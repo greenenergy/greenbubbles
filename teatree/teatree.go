@@ -670,6 +670,7 @@ func (t *Tree) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		// TODO: Do I take into account margin & border?
+		log.Printf("[Tree] Setting Width: %d, Height: %d\n", msg.Width, msg.Height)
 		t.Width = msg.Width
 		t.Height = msg.Height
 		t.initialized = true
